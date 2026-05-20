@@ -1,0 +1,1506 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  LayoutDashboard, Users, Plus, ChevronRight, MapPin, Phone, MessageCircle, 
+  TrendingUp, Calendar, AlertCircle, X, Wrench, Search, DollarSign, Clock, 
+  BarChart3, Edit3, Trash2, Check, CheckCircle2, AlertTriangle, UserPlus, Info, Save, Image, Smartphone
+} from 'lucide-react';
+
+const INITIAL_CLIENTS = [
+  { 
+    id: 1, 
+    name: 'משפחת ישראלי (אבי)', 
+    phone: '0501234567', 
+    location: 'רעננה, אחוזה 102', 
+    age: 42,
+    gardenSize: 180, 
+    profitRating: 9, // 1-10 Business rating
+    headacheRating: 2, // 1-5 Complexity rating
+    status: 'active', // active, past, potential
+    frequency: 14, // Reminder every X days
+    notes: 'כלב גדול בחצר (רקס) - תמיד להתקשר לפני שפותחים את השער. אוהב דישון אורגני בלבד.',
+    relationshipNotes: 'אבי אוהב לדבר על כדורגל. תמיד להציע לו כוס מים קרים. אשתו רוצה שנתמקד בערוגת הוורדים.',
+    lastVisitDate: '2026-05-10',
+    images: ['https://images.unsplash.com/photo-1558904541-efa8c3a30fc9?w=400&auto=format&fit=crop&q=60'],
+    visits: [
+      { id: 101, date: '2026-05-10', jobType: 'כיסוח וגיזום יסודי', cost: 450, paymentType: 'העברה', paid: true, details: 'בוצע ניקוי של הטרסה הדרומית ודישון עונתי.' },
+      { id: 102, date: '2026-04-26', jobType: 'טיפול מונע למזיקים', cost: 350, paymentType: 'מזומן', paid: true, details: 'ריסוס נגד כנימות בוורדים.' },
+      { id: 103, date: '2026-04-12', jobType: 'תחזוקה שוטפת', cost: 450, paymentType: 'העברה', paid: false, details: 'כיסוח דשא רגיל, נשאר חוב על סך 450 ש"ח שיסגר בביקור הבא.' }
+    ]
+  },
+  { 
+    id: 2, 
+    name: 'מלון בוטיק הסלע', 
+    phone: '0549876543', 
+    location: 'הרצליה, הים 55', 
+    age: 55,
+    gardenSize: 650, 
+    profitRating: 8, 
+    headacheRating: 4, 
+    status: 'active',
+    frequency: 7, 
+    notes: 'תיאום הגעה רק מול מנהל המשמרת (שרון). לעבוד רק בין 10:00 ל-13:00 כדי לא להפריע לאורחים.',
+    relationshipNotes: 'שרון מאוד פדנט לגבי פינוי הגזם. תמיד לדאוג שהכל יהיה מטאטא נקי.',
+    lastVisitDate: '2026-05-15',
+    images: ['https://images.unsplash.com/photo-1584467541268-b040f83be3fd?w=400&auto=format&fit=crop&q=60'],
+    visits: [
+      { id: 201, date: '2026-05-15', jobType: 'עיצוב עצים ופיסול שיחים', cost: 1200, paymentType: 'צק', paid: true, details: 'שולמו 1200 ש"ח בצק שייפרע בסוף החודש.' },
+      { id: 202, date: '2026-05-08', jobType: 'הקמת ערוגות חדשות', cost: 3200, paymentType: 'העברה', paid: true, details: 'התקנת מערכת טפטפות חדשה ושתילת 40 שתילי פרחים.' }
+    ]
+  },
+  { 
+    id: 3, 
+    name: 'דניאל קליין', 
+    phone: '0528889900', 
+    location: 'תל אביב, בזל 12', 
+    age: 29,
+    gardenSize: 45, 
+    profitRating: 5, 
+    headacheRating: 5, 
+    status: 'potential',
+    frequency: 30, 
+    notes: 'מרפסת גג גדולה. להתחשב בשכנים מלמטה כשמשקים.',
+    relationshipNotes: 'התלונן פעם אחת על לכלוך במעלית. חשוב להיות סופר אדיבים.',
+    lastVisitDate: '2026-03-01',
+    images: [],
+    visits: []
+  }
+];
+
+const INITIAL_EXPENSES = [
+  { id: 1, name: 'מפוח עלים בנזין מקיטה', cost: 1850, date: '2026-04-10', category: 'כלים' },
+  { id: 2, name: 'שקי דשן כימי (מלאי קיץ)', cost: 600, date: '2026-05-02', category: 'חומרים' },
+  { id: 3, name: 'דלק לגזם ומכסחת', cost: 220, date: '2026-05-18', category: 'שוטף' }
+];
+
+export default function App() {
+  const [clients, setClients] = useState(INITIAL_CLIENTS);
+  const [expenses, setExpenses] = useState(INITIAL_EXPENSES);
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, clients, tools, analytics
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals / Editors State
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [isAddVisitOpen, setIsAddVisitOpen] = useState(false);
+  const [isEditVisitOpen, setIsEditVisitOpen] = useState(false);
+  const [activeVisitToEdit, setActiveVisitToEdit] = useState(null);
+
+  // New Client Form State
+  const [newClient, setNewClient] = useState({
+    name: '', phone: '', location: '', age: 35, gardenSize: 100,
+    profitRating: 7, headacheRating: 2, status: 'active', frequency: 14,
+    notes: '', relationshipNotes: '', images: [], visits: []
+  });
+
+  // New Visit Form State
+  const [newVisit, setNewVisit] = useState({
+    date: new Date().toISOString().split('T')[0],
+    jobType: 'תחזוקה שוטפת',
+    cost: '',
+    paymentType: 'העברה',
+    paid: false,
+    details: ''
+  });
+
+  // Global Goal
+  const annualGoal = 250000;
+
+  // Selected client memoized
+  const selectedClient = useMemo(() => {
+    return clients.find(c => c.id === selectedClientId);
+  }, [clients, selectedClientId]);
+
+  const handleAddClient = (e) => {
+    e.preventDefault();
+    if (!newClient.name || !newClient.phone) return;
+    const clientToAdd = {
+      ...newClient,
+      id: Date.now(),
+      lastVisitDate: '',
+      visits: []
+    };
+    setClients([clientToAdd, ...clients]);
+    setNewClient({
+      name: '', phone: '', location: '', age: 35, gardenSize: 100,
+      profitRating: 7, headacheRating: 2, status: 'active', frequency: 14,
+      notes: '', relationshipNotes: '', images: [], visits: []
+    });
+    setIsAddClientOpen(false);
+    setActiveTab('clients');
+  };
+
+  const handleAddVisit = (e) => {
+    e.preventDefault();
+    if (!selectedClientId) return;
+    
+    const visitToAdd = {
+      id: Date.now(),
+      date: newVisit.date,
+      jobType: newVisit.jobType,
+      cost: Number(newVisit.cost) || 0,
+      paymentType: newVisit.paymentType,
+      paid: newVisit.paid,
+      details: newVisit.details
+    };
+
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === selectedClientId) {
+          const updatedVisits = [visitToAdd, ...c.visits];
+          // Automatically update last visit date to the newest visit's date
+          const sortedVisits = [...updatedVisits].sort((a,b) => new Date(b.date) - new Date(a.date));
+          return {
+            ...c,
+            visits: updatedVisits,
+            lastVisitDate: sortedVisits[0] ? sortedVisits[0].date : c.lastVisitDate
+          };
+        }
+        return c;
+      });
+    });
+
+    setNewVisit({
+      date: new Date().toISOString().split('T')[0],
+      jobType: 'תחזוקה שוטפת',
+      cost: '',
+      paymentType: 'העברה',
+      paid: false,
+      details: ''
+    });
+    setIsAddVisitOpen(false);
+  };
+
+  const handleTogglePaymentStatus = (clientId, visitId) => {
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === clientId) {
+          return {
+            ...c,
+            visits: c.visits.map(v => v.id === visitId ? { ...v, paid: !v.paid } : v)
+          };
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleOpenEditVisit = (visit) => {
+    setActiveVisitToEdit({ ...visit });
+    setIsEditVisitOpen(true);
+  };
+
+  const handleSaveEditedVisit = (e) => {
+    e.preventDefault();
+    if (!selectedClientId || !activeVisitToEdit) return;
+
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === selectedClientId) {
+          const updatedVisits = c.visits.map(v => v.id === activeVisitToEdit.id ? activeVisitToEdit : v);
+          const sortedVisits = [...updatedVisits].sort((a,b) => new Date(b.date) - new Date(a.date));
+          return {
+            ...c,
+            visits: updatedVisits,
+            lastVisitDate: sortedVisits[0] ? sortedVisits[0].date : c.lastVisitDate
+          };
+        }
+        return c;
+      });
+    });
+
+    setIsEditVisitOpen(false);
+    setActiveVisitToEdit(null);
+  };
+
+  const handleDeleteVisit = (clientId, visitId) => {
+    if(!window.confirm("האם אתה בטוח שברצונך למחוק את התיעוד של ביקור זה?")) return;
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === clientId) {
+          const updatedVisits = c.visits.filter(v => v.id !== visitId);
+          const sortedVisits = [...updatedVisits].sort((a,b) => new Date(b.date) - new Date(a.date));
+          return {
+            ...c,
+            visits: updatedVisits,
+            lastVisitDate: sortedVisits[0] ? sortedVisits[0].date : ''
+          };
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleUpdateNotes = (clientId, type, text) => {
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === clientId) {
+          return {
+            ...c,
+            [type]: text
+          };
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleSimulatePhotoUpload = (clientId) => {
+    const urls = [
+      'https://images.unsplash.com/photo-1592150621744-aca64f48394a?w=400&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1598902108854-10e335adac99?w=400&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&auto=format&fit=crop&q=60'
+    ];
+    const randomUrl = urls[Math.floor(Math.random() * urls.length)];
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === clientId) {
+          return {
+            ...c,
+            images: [randomUrl, ...c.images]
+          };
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleUpdateFrequency = (clientId, newFreq) => {
+    setClients(prevClients => {
+      return prevClients.map(c => {
+        if (c.id === clientId) {
+          return { ...c, frequency: Number(newFreq) };
+        }
+        return c;
+      });
+    });
+  };
+
+  // Financial Computations for Charts & Dashboard
+  const totalRevenue = useMemo(() => {
+    return clients.reduce((sum, c) => sum + c.visits.reduce((vSum, v) => vSum + v.cost, 0), 0);
+  }, [clients]);
+
+  const totalPaidRevenue = useMemo(() => {
+    return clients.reduce((sum, c) => sum + c.visits.reduce((vSum, v) => vSum + (v.paid ? v.cost : 0), 0), 0);
+  }, [clients]);
+
+  const totalUnpaidRevenue = totalRevenue - totalPaidRevenue;
+
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((sum, e) => sum + e.cost, 0);
+  }, [expenses]);
+
+  const netProfit = totalRevenue - totalExpenses;
+
+  // Overdue action checks (Automated alerts: last visit compared to preferred connection frequency)
+  const clientsWithAlerts = useMemo(() => {
+    return clients.map(c => {
+      if (!c.lastVisitDate) return { ...c, alertLevel: 'red', daysOverdue: 999 };
+      const last = new Date(c.lastVisitDate);
+      const today = new Date();
+      const diffTime = Math.abs(today - last);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      let alertLevel = 'green';
+      if (diffDays > c.frequency * 1.5) {
+        alertLevel = 'red';
+      } else if (diffDays > c.frequency) {
+        alertLevel = 'yellow';
+      }
+      return {
+        ...c,
+        alertLevel,
+        daysOverdue: Math.max(0, diffDays - c.frequency)
+      };
+    });
+  }, [clients]);
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-[#02211c] text-white font-sans overflow-x-hidden selection:bg-[#70892E]/50 pb-24">
+      {/* Background Orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#70892E]/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-950/40 rounded-full blur-[110px]" />
+      </div>
+
+      {/* Header Panel */}
+      <header className="sticky top-0 bg-[#053931]/60 backdrop-blur-2xl p-4 border-b border-white/10 z-40 flex justify-between items-center transition-all">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#70892E] animate-ping" />
+            <h1 className="text-xl font-black tracking-tight text-white">Gardener<span className="text-[#70892E]">PRO</span> <span className="text-[11px] font-medium opacity-60">v2.0</span></h1>
+          </div>
+          <p className="text-[10px] uppercase tracking-widest text-[#70892E] font-bold">הקוקפיט הניהולי של ליאור</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsAddClientOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-[#70892E]/20 active:scale-95"
+          >
+            <UserPlus size={14} />
+            <span>לקוח חדש</span>
+          </button>
+          <div className="w-9 h-9 rounded-full bg-[#70892E]/20 border border-[#70892E]/40 flex items-center justify-center font-bold text-[#70892E] shadow-inner text-sm">
+            ל
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="relative z-10 max-w-6xl mx-auto p-4 space-y-6">
+        
+        {/* Quick Alarm Banner (If there are clients needing immediate touchpoint) */}
+        {clientsWithAlerts.some(c => c.alertLevel === 'red') && (
+          <div className="bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between gap-4 animate-pulse">
+            <div className="flex items-center gap-3 text-red-200">
+              <AlertCircle className="text-red-400 shrink-0" size={20} />
+              <div>
+                <p className="text-xs font-bold">מערכת התראות מבוססת זמן עבודה ותדירות:</p>
+                <p className="text-[11px] opacity-80">יש לקוחות שעברו את התדירות המומלצת שהגדרת. התקשר לשמר אותם!</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setActiveTab('clients'); setSearchQuery(''); }}
+              className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold rounded-lg transition-all"
+            >
+              הצג לקוחות דחופים
+            </button>
+          </div>
+        )}
+
+        {/* Tab Selector Desktop-Friendly Header */}
+        <div className="hidden md:flex justify-start gap-4 p-1 bg-black/20 rounded-2xl max-w-md border border-white/5">
+          <button onClick={() => { setActiveTab('dashboard'); setSelectedClientId(null); }} className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-[#70892E] text-white' : 'opacity-60 hover:opacity-100'}`}>בורסת העסק</button>
+          <button onClick={() => { setActiveTab('clients'); }} className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all ${activeTab === 'clients' ? 'bg-[#70892E] text-white' : 'opacity-60 hover:opacity-100'}`}>אנשי קשר ונכסים</button>
+          <button onClick={() => { setActiveTab('analytics'); }} className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all ${activeTab === 'analytics' ? 'bg-[#70892E] text-white' : 'opacity-60 hover:opacity-100'}`}>גרפים ואנליזה</button>
+          <button onClick={() => { setActiveTab('tools'); }} className={`flex-1 py-2 text-center rounded-xl text-xs font-bold transition-all ${activeTab === 'tools' ? 'bg-[#70892E] text-white' : 'opacity-60 hover:opacity-100'}`}>הוצאות ורכש</button>
+        </div>
+
+        {/* Dynamic Views Switcher */}
+        {activeTab === 'dashboard' && (
+          <DashboardView 
+            clients={clientsWithAlerts} 
+            totalRev={totalRevenue} 
+            totalExpenses={totalExpenses} 
+            netProfit={netProfit}
+            annualGoal={annualGoal} 
+            totalPaidRevenue={totalPaidRevenue}
+            totalUnpaidRevenue={totalUnpaidRevenue}
+            setActiveTab={setActiveTab}
+            setSelectedClientId={setSelectedClientId}
+          />
+        )}
+
+        {activeTab === 'clients' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* List Side */}
+            <div className={`lg:col-span-1 space-y-4 ${selectedClientId ? 'hidden lg:block' : 'block'}`}>
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-xl">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-sm font-bold text-[#70892E]">רשימת הלקוחות שלך ({clients.length})</h2>
+                  <button onClick={() => setIsAddClientOpen(true)} className="text-xs text-[#70892E] hover:underline flex items-center gap-1">
+                    <Plus size={12} /> הוסף חדש
+                  </button>
+                </div>
+                {/* Search Bar */}
+                <div className="relative mb-3">
+                  <input 
+                    type="text" 
+                    placeholder="חפש לקוח לפי שם, מיקום או טלפון..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl py-2 px-3 pl-10 text-xs focus:outline-none focus:border-[#70892E] transition-all text-right"
+                  />
+                  <Search size={14} className="absolute left-3 top-2.5 opacity-40 text-white" />
+                </div>
+
+                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                  {clientsWithAlerts
+                    .filter(c => c.name.includes(searchQuery) || c.location.includes(searchQuery) || c.phone.includes(searchQuery))
+                    .map(c => {
+                      const clientTotalRev = c.visits.reduce((acc, v) => acc + v.cost, 0);
+                      const outstandingDebts = c.visits.some(v => !v.paid);
+                      return (
+                        <div 
+                          key={c.id} 
+                          onClick={() => setSelectedClientId(c.id)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex justify-between items-center ${selectedClientId === c.id ? 'bg-[#70892E]/20 border-[#70892E]' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                        >
+                          <div className="space-y-1">
+                            <p className="font-bold text-sm flex items-center gap-1.5">
+                              {c.name}
+                              {outstandingDebts && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title="יש חוב פתוח" />}
+                            </p>
+                            <p className="text-[11px] opacity-60 flex items-center gap-1"><MapPin size={10}/> {c.location}</p>
+                            <p className="text-[10px] font-bold text-[#70892E]">שווי שנתי: ₪{clientTotalRev.toLocaleString()}</p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {/* Alert Indicator */}
+                            <span className={`w-2.5 h-2.5 rounded-full ${c.alertLevel === 'red' ? 'bg-red-500 animate-pulse' : c.alertLevel === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'}`} title={`רמת התראה: ${c.alertLevel}`} />
+                            <ChevronRight size={16} className="opacity-40" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Detail Side */}
+            <div className={`lg:col-span-2 ${selectedClientId ? 'block' : 'hidden lg:block'}`}>
+              {selectedClient ? (
+                <ClientLedgerView 
+                  client={selectedClient} 
+                  onBack={() => setSelectedClientId(null)}
+                  onTogglePayment={(visitId) => handleTogglePaymentStatus(selectedClient.id, visitId)}
+                  onOpenAddVisit={() => setIsAddVisitOpen(true)}
+                  onOpenEditVisit={handleOpenEditVisit}
+                  onDeleteVisit={(visitId) => handleDeleteVisit(selectedClient.id, visitId)}
+                  onUpdateNotes={(type, text) => handleUpdateNotes(selectedClient.id, type, text)}
+                  onSimulatePhoto={() => handleSimulatePhotoUpload(selectedClient.id)}
+                  onUpdateFrequency={(freq) => handleUpdateFrequency(selectedClient.id, freq)}
+                />
+              ) : (
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center backdrop-blur-xl flex flex-col items-center justify-center min-h-[400px]">
+                  <Users size={48} className="text-[#70892E] opacity-30 mb-4" />
+                  <h3 className="font-bold text-lg mb-1">בחר לקוח מהרשימה</h3>
+                  <p className="text-xs opacity-60 max-w-sm">לחץ על לקוח כדי לפתוח את תיק הנכס המלא שלו, להוסיף או לערוך ביקורים, לעדכן תשלומים ולצפות ביומן המערכת החכם שלו.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsDashboardView clients={clients} expenses={expenses} />
+        )}
+
+        {activeTab === 'tools' && (
+          <ExpensesView expenses={expenses} setExpenses={setExpenses} />
+        )}
+
+      </main>
+
+      {}
+      {/* Mobile Sticky Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 p-4 bg-[#053931]/90 backdrop-blur-2xl border-t border-white/10 z-40 md:hidden flex justify-around items-center">
+        <button 
+          onClick={() => { setActiveTab('dashboard'); setSelectedClientId(null); }} 
+          className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-[#70892E]' : 'opacity-40'}`}
+        >
+          <LayoutDashboard size={20} />
+          <span className="text-[10px]">הבורסה</span>
+        </button>
+        
+        <button 
+          onClick={() => { setActiveTab('clients'); }} 
+          className={`flex flex-col items-center gap-1 ${activeTab === 'clients' ? 'text-[#70892E]' : 'opacity-40'}`}
+        >
+          <Users size={20} />
+          <span className="text-[10px]">לקוחות</span>
+        </button>
+
+        {/* Dynamic Float Quick Add Button */}
+        <button 
+          onClick={() => setIsAddClientOpen(true)}
+          className="w-12 h-12 -mt-6 bg-gradient-to-tr from-[#70892E] to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-[#70892E]/40 text-white font-bold transform active:scale-95 transition-all"
+        >
+          <Plus size={24} />
+        </button>
+
+        <button 
+          onClick={() => { setActiveTab('analytics'); }} 
+          className={`flex flex-col items-center gap-1 ${activeTab === 'analytics' ? 'text-[#70892E]' : 'opacity-40'}`}
+        >
+          <BarChart3 size={20} />
+          <span className="text-[10px]">אנליזה</span>
+        </button>
+
+        <button 
+          onClick={() => { setActiveTab('tools'); }} 
+          className={`flex flex-col items-center gap-1 ${activeTab === 'tools' ? 'text-[#70892E]' : 'opacity-40'}`}
+        >
+          <Wrench size={20} />
+          <span className="text-[10px]">הוצאות</span>
+        </button>
+      </nav>
+
+      {}
+      {/* MODAL: ADD NEW CLIENT */}
+      {isAddClientOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#053931] border border-white/10 rounded-3xl p-6 w-full max-w-xl text-right animate-in fade-in zoom-in duration-250">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black text-white flex items-center gap-2"><UserPlus className="text-[#70892E]"/> הוספת לקוח חדש למערכת</h2>
+              <button onClick={() => setIsAddClientOpen(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"><X size={18}/></button>
+            </div>
+
+            <form onSubmit={handleAddClient} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">שם לקוח / עסק *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newClient.name} 
+                    onChange={e => setNewClient({...newClient, name: e.target.value})}
+                    placeholder="למשל: משפחת כהן"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">טלפון ליצירת קשר *</label>
+                  <input 
+                    type="tel" 
+                    required
+                    value={newClient.phone} 
+                    onChange={e => setNewClient({...newClient, phone: e.target.value})}
+                    placeholder="למשל: 0500000000"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">מיקום / כתובת</label>
+                  <input 
+                    type="text" 
+                    value={newClient.location} 
+                    onChange={e => setNewClient({...newClient, location: e.target.value})}
+                    placeholder="למשל: רחוב הדקל 4, כפר סבא"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">גיל הלקוח</label>
+                  <input 
+                    type="number" 
+                    value={newClient.age} 
+                    onChange={e => setNewClient({...newClient, age: Number(e.target.value)})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">גודל גינה (מ"ר)</label>
+                  <input 
+                    type="number" 
+                    value={newClient.gardenSize} 
+                    onChange={e => setNewClient({...newClient, gardenSize: Number(e.target.value)})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div>
+                  <label className="block text-xs text-[#70892E] font-bold mb-1">מדד רווחיות עסקית (1-10)</label>
+                  <input 
+                    type="range" min="1" max="10" 
+                    value={newClient.profitRating} 
+                    onChange={e => setNewClient({...newClient, profitRating: Number(e.target.value)})}
+                    className="w-full accent-[#70892E]"
+                  />
+                  <span className="text-xs font-bold text-white block text-center mt-1">דירוג: {newClient.profitRating}/10</span>
+                </div>
+                <div>
+                  <label className="block text-xs text-red-400 font-bold mb-1">מדד "כאב ראש" (1-5)</label>
+                  <input 
+                    type="range" min="1" max="5" 
+                    value={newClient.headacheRating} 
+                    onChange={e => setNewClient({...newClient, headacheRating: Number(e.target.value)})}
+                    className="w-full accent-red-400"
+                  />
+                  <span className="text-xs font-bold text-white block text-center mt-1">דירוג: {newClient.headacheRating}/5</span>
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">סטטוס לקוח</label>
+                  <select 
+                    value={newClient.status}
+                    onChange={e => setNewClient({...newClient, status: e.target.value})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E] text-white"
+                  >
+                    <option value="active">לקוח פעיל (מניב)</option>
+                    <option value="potential">פוטנציאל לעתיד</option>
+                    <option value="past">לקוח עבר</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#70892E] font-bold mb-1">תדירות ביקורים רצויה (סליידר ימים)</label>
+                <input 
+                  type="range" min="7" max="90" step="7" 
+                  value={newClient.frequency} 
+                  onChange={e => setNewClient({...newClient, frequency: Number(e.target.value)})}
+                  className="w-full accent-[#70892E]"
+                />
+                <span className="text-xs font-bold text-white block text-right mt-1">ביקור פעם ב-{newClient.frequency} ימים</span>
+              </div>
+
+              <div>
+                <label className="block text-xs opacity-60 mb-1">הוראות מיוחדות / דברים לזכור</label>
+                <textarea 
+                  rows="2"
+                  value={newClient.notes} 
+                  onChange={e => setNewClient({...newClient, notes: e.target.value})}
+                  placeholder="למשל: יש שער נעול, אלרגי לכלבים..."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95"
+              >
+                שמור לקוח והתחל עבודה
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {}
+      {/* MODAL: ADD NEW VISIT RECORD */}
+      {isAddVisitOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#053931] border border-white/10 rounded-3xl p-6 w-full max-w-md text-right">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-white">הזנת ביקור חדש / עבודה שבוצעה</h2>
+              <button onClick={() => setIsAddVisitOpen(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"><X size={18}/></button>
+            </div>
+
+            <form onSubmit={handleAddVisit} className="space-y-4">
+              <div>
+                <label className="block text-xs opacity-60 mb-1">תאריך ביקור</label>
+                <input 
+                  type="date" 
+                  required
+                  value={newVisit.date} 
+                  onChange={e => setNewVisit({...newVisit, date: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs opacity-60 mb-1">סוג עבודה</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newVisit.jobType} 
+                  onChange={e => setNewVisit({...newVisit, jobType: e.target.value})}
+                  placeholder="למשל: כיסוח דשא, דישון וגיזום עמוק"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">עלות (₪)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={newVisit.cost} 
+                    onChange={e => setNewVisit({...newVisit, cost: e.target.value})}
+                    placeholder="למשל: 450"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">אמצעי תשלום</label>
+                  <select 
+                    value={newVisit.paymentType}
+                    onChange={e => setNewVisit({...newVisit, paymentType: e.target.value})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                  >
+                    <option value="העברה">העברה בנקאית</option>
+                    <option value="מזומן">מזומן</option>
+                    <option value="צק">צ'ק</option>
+                    <option value="אפליקציה">ביט / פייבוקס</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+                <input 
+                  type="checkbox" 
+                  id="visitPaidCheck"
+                  checked={newVisit.paid}
+                  onChange={e => setNewVisit({...newVisit, paid: e.target.checked})}
+                  className="accent-[#70892E] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="visitPaidCheck" className="text-xs font-bold text-white cursor-pointer select-none">ביקור זה שולם במלואו במעמד העבודה</label>
+              </div>
+
+              <div>
+                <label className="block text-xs opacity-60 mb-1">פרטי התנהלות ורכישות (לתיעוד ההיסטוריה)</label>
+                <textarea 
+                  rows="3"
+                  value={newVisit.details} 
+                  onChange={e => setNewVisit({...newVisit, details: e.target.value})}
+                  placeholder="למשל: נקנו שתילי פטוניות ב-50 שח. הלקוח שאל לגבי מחיר לכיסוח חצי שנתי."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95"
+              >
+                הזן ביקור ליומן העבודה
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {}
+      {/* MODAL: EDIT VISITS (RETROACTIVE DIARY EDIT) */}
+      {isEditVisitOpen && activeVisitToEdit && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#053931] border border-white/10 rounded-3xl p-6 w-full max-w-md text-right">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2"><Edit3 size={18}/> עריכת תיעוד היסטורי</h2>
+              <button onClick={() => { setIsEditVisitOpen(false); setActiveVisitToEdit(null); }} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"><X size={18}/></button>
+            </div>
+
+            <form onSubmit={handleSaveEditedVisit} className="space-y-4">
+              <div>
+                <label className="block text-xs opacity-60 mb-1">תאריך ביקור</label>
+                <input 
+                  type="date" 
+                  required
+                  value={activeVisitToEdit.date} 
+                  onChange={e => setActiveVisitToEdit({...activeVisitToEdit, date: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs opacity-60 mb-1">סוג עבודה</label>
+                <input 
+                  type="text" 
+                  required
+                  value={activeVisitToEdit.jobType} 
+                  onChange={e => setActiveVisitToEdit({...activeVisitToEdit, jobType: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">עלות (₪)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={activeVisitToEdit.cost} 
+                    onChange={e => setActiveVisitToEdit({...activeVisitToEdit, cost: Number(e.target.value)})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-60 mb-1">סוג תשלום</label>
+                  <select 
+                    value={activeVisitToEdit.paymentType}
+                    onChange={e => setActiveVisitToEdit({...activeVisitToEdit, paymentType: e.target.value})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                  >
+                    <option value="העברה">העברה בנקאית</option>
+                    <option value="מזומן">מזומן</option>
+                    <option value="צק">צ'ק</option>
+                    <option value="אפליקציה">ביט / פייבוקס</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+                <input 
+                  type="checkbox" 
+                  id="editVisitPaidCheck"
+                  checked={activeVisitToEdit.paid}
+                  onChange={e => setActiveVisitToEdit({...activeVisitToEdit, paid: e.target.checked})}
+                  className="accent-[#70892E] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="editVisitPaidCheck" className="text-xs font-bold text-white cursor-pointer select-none">ביקור זה שולם במלואו</label>
+              </div>
+
+              <div>
+                <label className="block text-xs opacity-60 mb-1">יומן התנהלות אישית של הביקור</label>
+                <textarea 
+                  rows="3"
+                  value={activeVisitToEdit.details} 
+                  onChange={e => setActiveVisitToEdit({...activeVisitToEdit, details: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95"
+              >
+                עדכן שינויים ושמור היסטוריה
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+function DashboardView({ clients, totalRev, totalExpenses, netProfit, annualGoal, totalPaidRevenue, totalUnpaidRevenue, setActiveTab, setSelectedClientId }) {
+  const progressPercent = Math.min(100, Math.round((totalRev / annualGoal) * 100));
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* Real-time Business Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute top-3 left-3 opacity-20 text-[#70892E]"><TrendingUp size={28}/></div>
+          <p className="text-xs opacity-60">מחזור עבודה שנתי (ברוטו)</p>
+          <p className="text-2xl font-black text-[#70892E] mt-1">₪{totalRev.toLocaleString()}</p>
+          <div className="text-[10px] text-[#70892E] mt-2 flex items-center gap-1 font-bold">
+            <span className="bg-[#70892E]/20 px-1.5 py-0.5 rounded-md">צמיחה</span>
+            <span>מבוסס הזנות יומן</span>
+          </div>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute top-3 left-3 opacity-20 text-[#70892E]"><CheckCircle2 size={28}/></div>
+          <p className="text-xs opacity-60">הכנסה שנסגרה (שולם)</p>
+          <p className="text-2xl font-black text-emerald-400 mt-1">₪{totalPaidRevenue.toLocaleString()}</p>
+          <p className="text-[10px] opacity-60 mt-2">נתוני קופה בזמן אמת</p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute top-3 left-3 opacity-20 text-red-400"><AlertTriangle size={28}/></div>
+          <p className="text-xs opacity-60">חובות לקוחות פתוחים</p>
+          <p className="text-2xl font-black text-red-400 mt-1">₪{totalUnpaidRevenue.toLocaleString()}</p>
+          <p className="text-[10px] opacity-60 mt-2">צורך גבייה מיידית</p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute top-3 left-3 opacity-20 text-[#70892E]"><Wrench size={28}/></div>
+          <p className="text-xs opacity-60">סה"כ הוצאות רכש וכלים</p>
+          <p className="text-2xl font-black text-white mt-1">₪{totalExpenses.toLocaleString()}</p>
+          <p className="text-[10px] text-red-300 mt-2">קיזוז מס מוערך: ₪{Math.round(totalExpenses * 0.17)}</p>
+        </div>
+
+      </div>
+
+      {/* Target Progress Bar */}
+      <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-4">
+        <div className="flex justify-between items-end">
+          <div>
+            <h3 className="font-bold text-sm">מדד מינוף והתקדמות שנתית</h3>
+            <p className="text-xs opacity-60">היעד השנתי של ליאור: ₪{annualGoal.toLocaleString()}</p>
+          </div>
+          <span className="text-3xl font-black text-[#70892E]">{progressPercent}%</span>
+        </div>
+        <div className="w-full h-4 bg-black/30 rounded-full overflow-hidden p-0.5 border border-white/5">
+          <div className="h-full bg-gradient-to-r from-[#70892E] to-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }} />
+        </div>
+        <p className="text-[11px] opacity-75">נשאר לך עוד ₪{(annualGoal - totalRev).toLocaleString()} כדי להגיע ליעד השנתי!</p>
+      </div>
+
+      {/* Stock market like alert list for follow-ups */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Dynamic Alerts Queue */}
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-xl">
+          <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2">
+            <Clock size={16} className="text-[#70892E]"/>
+            <span>תזכורות אוטומטיות לשימור לקוחות</span>
+          </h3>
+          <div className="space-y-2">
+            {clients.filter(c => c.alertLevel === 'red' || c.alertLevel === 'yellow').map(c => (
+              <div 
+                key={c.id} 
+                onClick={() => { setSelectedClientId(c.id); setActiveTab('clients'); }}
+                className="bg-black/20 border border-white/5 p-3 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-black/30 transition-all"
+              >
+                <div>
+                  <p className="text-xs font-bold">{c.name}</p>
+                  <p className="text-[10px] opacity-60">ביקור אחרון: {c.lastVisitDate || 'מעולם לא'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${c.alertLevel === 'red' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                    חריגה של {c.daysOverdue} ימים
+                  </span>
+                  <ChevronRight size={14} className="opacity-40" />
+                </div>
+              </div>
+            ))}
+            {clients.filter(c => c.alertLevel === 'red' || c.alertLevel === 'yellow').length === 0 && (
+              <p className="text-xs opacity-60 text-center py-6">כל הלקוחות מטופלים בזמן! אין חריגות תדירות.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Action Panel */}
+        <div className="bg-gradient-to-br from-[#053931] to-[#0d2a25] border border-white/10 rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-base font-black mb-2 text-[#70892E]">איפה עושים מה?</h3>
+            <ul className="text-xs space-y-3 opacity-90">
+              <li className="flex items-start gap-2">
+                <span className="text-[#70892E] font-bold">1. הוספת לקוחות:</span>
+                <span>לחץ על כפתור "לקוח חדש" בראש הדף. מלא את מדדי הכדאיות והתדירות.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#70892E] font-bold">2. עדכון תשלומים (שולם/לא שולם):</span>
+                <span>כנס לכרטיס לקוח, ובלחיצה אחת סמן אם הביקור שולם או לא.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#70892E] font-bold">3. עריכת יומן ביקורים בדיעבד:</span>
+                <span>בלשונית הלקוח, לחץ על האייקון של העיפרון ליד כל ביקור בעבר כדי לתקן או לרשום הערות חדשות.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#70892E] font-bold">4. גרפים מפורטים:</span>
+                <span>לחץ על לשונית "אנליזה" כדי לקבל ניתוח גרפי מקיף של העסק.</span>
+              </li>
+            </ul>
+          </div>
+          <button 
+            onClick={() => setActiveTab('clients')}
+            className="w-full mt-4 py-2.5 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl text-xs font-bold transition-all"
+          >
+            פתח את ספר הלקוחות שלי
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+function ClientLedgerView({ client, onBack, onTogglePayment, onOpenAddVisit, onOpenEditVisit, onDeleteVisit, onUpdateNotes, onSimulatePhoto, onUpdateFrequency }) {
+  const [personalDiaryText, setPersonalDiaryText] = useState(client.relationshipNotes || '');
+  const [generalNotesText, setGeneralNotesText] = useState(client.notes || '');
+  const [isSaved, setIsSaved] = useState(false);
+
+  const clientRevenue = useMemo(() => {
+    return client.visits.reduce((sum, v) => sum + v.cost, 0);
+  }, [client]);
+
+  const clientPaid = useMemo(() => {
+    return client.visits.reduce((sum, v) => sum + (v.paid ? v.cost : 0), 0);
+  }, [client]);
+
+  const clientDebt = clientRevenue - clientPaid;
+
+  const handleSaveNotes = () => {
+    onUpdateNotes('relationshipNotes', personalDiaryText);
+    onUpdateNotes('notes', generalNotesText);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-6 animate-in slide-in-from-left-8 duration-300">
+      
+      {/* Client Header Card with quick actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
+        <div>
+          <button onClick={onBack} className="text-xs text-[#70892E] hover:underline mb-2 flex items-center gap-1">← חזרה לרשימה</button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-black text-white">{client.name}</h2>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${client.status === 'active' ? 'bg-[#70892E]/20 text-[#70892E] border border-[#70892E]/30' : 'bg-yellow-500/20 text-yellow-300'}`}>
+              {client.status === 'active' ? 'פעיל' : client.status === 'past' ? 'לקוח עבר' : 'פוטנציאל'}
+            </span>
+          </div>
+          <p className="text-xs opacity-60 flex items-center gap-1 mt-1"><MapPin size={12}/> {client.location}</p>
+        </div>
+
+        {/* Quick Dial Buttons */}
+        <div className="flex gap-2 w-full md:w-auto">
+          <a href={`tel:${client.phone}`} className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold transition-all">
+            <Phone size={14} className="text-[#70892E]" />
+            <span>חיוג</span>
+          </a>
+          <a href={`https://wa.me/972${client.phone.replace(/^0/, '')}`} target="_blank" rel="noreferrer" className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 rounded-xl text-xs font-bold text-emerald-300 transition-all">
+            <MessageCircle size={14} />
+            <span>וואטסאפ</span>
+          </a>
+          <a href={`https://waze.com/ul?q=${encodeURIComponent(client.location)}`} target="_blank" rel="noreferrer" className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-xs font-bold text-blue-300 transition-all">
+            <Smartphone size={14} />
+            <span>ניווט Waze</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Basic Metrics Matrix */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
+          <p className="text-[10px] opacity-60">גיל הלקוח</p>
+          <p className="text-lg font-bold mt-1">{client.age} שנים</p>
+        </div>
+        <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
+          <p className="text-[10px] opacity-60">גודל הגינה</p>
+          <p className="text-lg font-bold mt-1">{client.gardenSize} מ"ר</p>
+        </div>
+        <div className="bg-[#70892E]/10 p-4 rounded-2xl border border-[#70892E]/20">
+          <p className="text-[10px] text-[#70892E] font-bold">מדד כדאיות עסקית</p>
+          <p className="text-lg font-bold mt-1 text-[#70892E]">{client.profitRating}/10</p>
+        </div>
+        <div className="bg-red-500/5 p-4 rounded-2xl border border-red-500/10">
+          <p className="text-[10px] text-red-400 font-bold">מדד "כאב ראש"</p>
+          <p className="text-lg font-bold mt-1 text-red-400">{client.headacheRating}/5</p>
+        </div>
+      </div>
+
+      {/* Financial Health Snapshot per Client */}
+      <div className="bg-black/30 p-4 rounded-2xl border border-white/5 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <p className="text-xs opacity-60">סה"כ תקבולים מהלקוח:</p>
+          <p className="text-xl font-black text-white mt-1">₪{clientRevenue.toLocaleString()}</p>
+        </div>
+        <div className="flex gap-4">
+          <div className="text-right">
+            <p className="text-[10px] opacity-60">שולם:</p>
+            <p className="text-sm font-bold text-emerald-400">₪{clientPaid.toLocaleString()}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] opacity-60">חוב פתוח:</p>
+            <p className={`text-sm font-bold ${clientDebt > 0 ? 'text-red-400' : 'text-white/60'}`}>₪{clientDebt.toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Automated contact setting */}
+      <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-bold text-[#70892E]">הגדרת תדירות תזכורת אוטומטית</span>
+          <span className="text-xs font-bold">פעם ב-{client.frequency} ימים</span>
+        </div>
+        <input 
+          type="range" min="7" max="60" step="7"
+          value={client.frequency}
+          onChange={(e) => onUpdateFrequency(e.target.value)}
+          className="w-full accent-[#70892E] cursor-pointer"
+        />
+        <p className="text-[10px] opacity-60">אם לא תוזן עבודה ביומן תוך {client.frequency} ימים, המערכת תתריע על צורך ביצירת קשר.</p>
+      </div>
+
+      {/* Photos Gallery simulator */}
+      <div className="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-3">
+        <div className="flex justify-between items-center">
+          <h4 className="text-xs font-bold flex items-center gap-1.5"><Image size={14}/> גלריית תמונות "לפני / אחרי"</h4>
+          <button 
+            onClick={onSimulatePhoto}
+            className="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg"
+          >
+            העלה תמונה
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {client.images && client.images.map((img, i) => (
+            <div key={i} className="aspect-square rounded-lg overflow-hidden bg-black/40 border border-white/10">
+              <img src={img} alt="Garden snapshot" className="w-full h-full object-cover" />
+            </div>
+          ))}
+          <div className="aspect-square rounded-lg border border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5" onClick={onSimulatePhoto}>
+            <span className="text-lg opacity-40">+</span>
+            <span className="text-[8px] opacity-40">ריק</span>
+          </div>
+        </div>
+      </div>
+
+      {}
+      {/* CLIENT DIARY & VISIT LOG (THE CORE REQUIREMENT) */}
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-sm text-white flex items-center gap-1.5"><Calendar size={16} className="text-[#70892E]"/> יומן ביקורים ועבודות עבר</h3>
+          <button 
+            onClick={onOpenAddVisit}
+            className="flex items-center gap-1.5 px-3 py-1 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl text-xs font-bold transition-all shadow-md"
+          >
+            <Plus size={14}/>
+            <span>הוסף עבודה / ביקור</span>
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {client.visits && client.visits.length > 0 ? (
+            client.visits.map((visit) => (
+              <div key={visit.id} className="bg-black/30 border border-white/5 rounded-2xl p-4 space-y-3 relative overflow-hidden">
+                
+                {/* Visual Strip for payment status */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${visit.paid ? 'bg-emerald-500' : 'bg-red-500'}`} />
+
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-xs text-white">{visit.jobType}</h4>
+                    <p className="text-[10px] opacity-60">{visit.date}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Pay Status Toggle Trigger (Direct Click!) */}
+                    <button 
+                      onClick={() => onTogglePayment(visit.id)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all ${visit.paid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}
+                      title="לחץ כאן כדי לשנות סטטוס תשלום"
+                    >
+                      {visit.paid ? <Check size={10}/> : <AlertCircle size={10}/>}
+                      <span>{visit.paid ? 'שולם' : 'לא שולם'}</span>
+                    </button>
+
+                    {/* Retroactive Action Buttons */}
+                    <button 
+                      onClick={() => onOpenEditVisit(visit)}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                      title="ערוך פרטי ביקור"
+                    >
+                      <Edit3 size={12}/>
+                    </button>
+                    <button 
+                      onClick={() => onDeleteVisit(visit.id)}
+                      className="p-1.5 rounded-lg bg-red-500/5 hover:bg-red-500/15 text-red-400"
+                      title="מחק ביקור"
+                    >
+                      <Trash2 size={12}/>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] border-t border-white/5 pt-2">
+                  <div>
+                    <span className="opacity-60">מחיר שנקבע: </span>
+                    <span className="font-bold text-white">₪{visit.cost}</span>
+                  </div>
+                  <div>
+                    <span className="opacity-60">אמצעי תשלום: </span>
+                    <span className="font-bold text-[#70892E]">{visit.paymentType}</span>
+                  </div>
+                </div>
+
+                {visit.details && (
+                  <p className="text-[11px] opacity-80 bg-black/40 p-2.5 rounded-xl border border-white/5 italic">
+                    <span className="font-bold not-italic text-[#70892E] block text-[9px] uppercase mb-0.5">סיכום התנהלות ויומן:</span>
+                    {visit.details}
+                  </p>
+                )}
+
+              </div>
+            ))
+          ) : (
+            <div className="bg-black/20 rounded-2xl p-6 text-center border border-dashed border-white/10">
+              <p className="text-xs opacity-60">אין עבודות עבר מתועדות עבור לקוח זה.</p>
+              <button onClick={onOpenAddVisit} className="mt-2 text-xs text-[#70892E] hover:underline font-bold">+ תעד עבודה ראשונה כעת</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {}
+      {/* PERSONAL DIARY & RELATIONSHIP NOTES (TO IMPRESS CLIENTS) */}
+      <div className="bg-white/5 border border-white/10 rounded-3xl p-5 space-y-4">
+        <h3 className="font-bold text-sm flex items-center gap-1.5 text-[#70892E]"><Info size={16}/> מידע רך ויומן אישי (כדי לזכור הכל!)</h3>
+        
+        <div>
+          <label className="block text-xs opacity-60 mb-1 font-bold">בקשות מיוחדות והוראות קבועות:</label>
+          <textarea 
+            rows="2"
+            value={generalNotesText}
+            onChange={(e) => setGeneralNotesText(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E] text-white"
+            placeholder="רשום בקשות לגבי כלבים, שכנים, השקייה..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs opacity-60 mb-1 font-bold">התנהלות אישית ויחסים (מפתח לשימור הלקוח):</label>
+          <textarea 
+            rows="3"
+            value={personalDiaryText}
+            onChange={(e) => setPersonalDiaryText(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#70892E] text-white"
+            placeholder="כמו: 'מעדיף שנתקשר רק בבוקר', 'אוהב כדורגל', 'לשים לב לעציץ בפינה'..."
+          />
+        </div>
+
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={handleSaveNotes}
+            className="px-4 py-2 bg-[#70892E] hover:bg-[#5b7024] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md"
+          >
+            <Save size={14}/>
+            <span>עדכן יומן לקוח</span>
+          </button>
+          {isSaved && <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">✓ עודכן בהצלחה</span>}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+function AnalyticsDashboardView({ clients, expenses }) {
+  // Let's create actual dynamic statistics
+  const totalRevenue = clients.reduce((sum, c) => sum + c.visits.reduce((vSum, v) => vSum + v.cost, 0), 0);
+  const totalPaidRevenue = clients.reduce((sum, c) => sum + c.visits.reduce((vSum, v) => vSum + (v.paid ? v.cost : 0), 0), 0);
+  const totalUnpaidRevenue = totalRevenue - totalPaidRevenue;
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.cost, 0);
+
+  // Grouping by months (Mocking dynamic monthly stats based on visits)
+  const monthlyData = useMemo(() => {
+    const data = {
+      'מרץ': { earnings: 0, expenses: 0 },
+      'אפריל': { earnings: 0, expenses: 0 },
+      'מאי': { earnings: 0, expenses: 0 },
+    };
+
+    clients.forEach(c => {
+      c.visits.forEach(v => {
+        const month = v.date.split('-')[1];
+        if (month === '03') data['מרץ'].earnings += v.cost;
+        if (month === '04') data['אפריל'].earnings += v.cost;
+        if (month === '05') data['מאי'].earnings += v.cost;
+      });
+    });
+
+    expenses.forEach(e => {
+      const month = e.date.split('-')[1];
+      if (month === '03') data['מרץ'].expenses += e.cost;
+      if (month === '04') data['אפריל'].expenses += e.cost;
+      if (month === '05') data['מאי'].expenses += e.cost;
+    });
+
+    return data;
+  }, [clients, expenses]);
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-6 animate-in fade-in duration-300">
+      <div>
+        <h2 className="text-lg font-black text-white">גרפים ומערכת אנליזה מתקדמת ("מניית העסק")</h2>
+        <p className="text-xs opacity-60">השוואת רווחיות, חודשי שיא, וניתוח הכנסות מול הוצאות בזמן אמת.</p>
+      </div>
+
+      {/* Simulated Time Series Chart using CSS Grid/Flexbox (No complex library breaks!) */}
+      <div className="bg-black/30 border border-white/5 rounded-2xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <span className="text-xs font-bold">הכנסות (עמודה ירוקה) מול הוצאות (עמודה לבנה)</span>
+          <div className="flex gap-2">
+            <span className="text-[10px] bg-[#70892E] text-white px-2 py-0.5 rounded-lg font-bold">חצי שנתי</span>
+          </div>
+        </div>
+
+        {/* The Graphical Chart Bars */}
+        <div className="h-48 flex items-end gap-6 md:gap-12 border-b border-white/10 pb-2 pt-6">
+          
+          {/* Month 1 */}
+          <div className="flex-1 flex flex-col items-center justify-end h-full group">
+            <div className="w-full flex justify-center gap-1.5 items-end h-full">
+              {/* Earnings Bar */}
+              <div 
+                className="w-4 bg-[#70892E] rounded-t-md hover:opacity-80 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(10, (monthlyData['מרץ'].earnings / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#053931] border border-[#70892E] text-[9px] font-bold py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['מרץ'].earnings}
+                </div>
+              </div>
+              {/* Expenses Bar */}
+              <div 
+                className="w-4 bg-white/40 rounded-t-md hover:bg-white/60 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(5, (monthlyData['מרץ'].expenses / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black border border-white/20 text-[9px] py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['מרץ'].expenses}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs mt-2 font-bold">מרץ</span>
+          </div>
+
+          {/* Month 2 */}
+          <div className="flex-1 flex flex-col items-center justify-end h-full group">
+            <div className="w-full flex justify-center gap-1.5 items-end h-full">
+              <div 
+                className="w-4 bg-[#70892E] rounded-t-md hover:opacity-80 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(10, (monthlyData['אפריל'].earnings / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#053931] border border-[#70892E] text-[9px] font-bold py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['אפריל'].earnings}
+                </div>
+              </div>
+              <div 
+                className="w-4 bg-white/40 rounded-t-md hover:bg-white/60 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(5, (monthlyData['אפריל'].expenses / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black border border-white/20 text-[9px] py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['אפריל'].expenses}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs mt-2 font-bold">אפריל</span>
+          </div>
+
+          {/* Month 3 */}
+          <div className="flex-1 flex flex-col items-center justify-end h-full group">
+            <div className="w-full flex justify-center gap-1.5 items-end h-full">
+              <div 
+                className="w-4 bg-[#70892E] rounded-t-md hover:opacity-80 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(10, (monthlyData['מאי'].earnings / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#053931] border border-[#70892E] text-[9px] font-bold py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['מאי'].earnings}
+                </div>
+              </div>
+              <div 
+                className="w-4 bg-white/40 rounded-t-md hover:bg-white/60 transition-all cursor-pointer relative"
+                style={{ height: `${Math.max(5, (monthlyData['מאי'].expenses / 12000) * 100)}%` }}
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black border border-white/20 text-[9px] py-0.5 px-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  ₪{monthlyData['מאי'].expenses}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs mt-2 font-bold">מאי (שיא)</span>
+          </div>
+
+        </div>
+        <p className="text-[10px] opacity-40 text-center mt-3">העבר את האצבע או העכבר מעל העמודות כדי לראות את הערכים המדויקים</p>
+      </div>
+
+      {/* Analytics Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div className="bg-black/30 p-4 rounded-2xl border border-white/5 space-y-2">
+          <h4 className="font-bold text-xs text-[#70892E]">הלקוח המכניס ביותר (MVP):</h4>
+          {clients.length > 0 ? (
+            (() => {
+              const clientSortedByValue = [...clients].sort((a,b) => b.visits.reduce((s,v)=>s+v.cost, 0) - a.visits.reduce((s,v)=>s+v.cost, 0));
+              const topClient = clientSortedByValue[0];
+              const topClientRev = topClient.visits.reduce((s,v)=>s+v.cost,0);
+              return (
+                <div>
+                  <p className="text-sm font-bold">{topClient.name}</p>
+                  <p className="text-xs opacity-60">הכניס השנה במצטבר: ₪{topClientRev.toLocaleString()}</p>
+                </div>
+              );
+            })()
+          ) : (
+            <p className="text-xs opacity-60">אין נתונים מספיקים.</p>
+          )}
+        </div>
+
+        <div className="bg-black/30 p-4 rounded-2xl border border-white/5 space-y-2">
+          <h4 className="font-bold text-xs text-red-400">אזהרת תזרים מזומנים (חובות):</h4>
+          <p className="text-sm font-bold text-white">יש לגבות: ₪{totalUnpaidRevenue.toLocaleString()}</p>
+          <p className="text-xs opacity-60">מתוך סך העבודות שביצעת, זה הסכום שטרם שולם על ידי הלקוחות שלך.</p>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+function ExpensesView({ expenses, setExpenses }) {
+  const [expenseName, setExpenseName] = useState('');
+  const [expenseCost, setExpenseCost] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('כלים');
+  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleAddExpense = (e) => {
+    e.preventDefault();
+    if (!expenseName || !expenseCost) return;
+    
+    const newExp = {
+      id: Date.now(),
+      name: expenseName,
+      cost: Number(expenseCost),
+      category: expenseCategory,
+      date: expenseDate
+    };
+
+    setExpenses([newExp, ...expenses]);
+    setExpenseName('');
+    setExpenseCost('');
+  };
+
+  const handleDeleteExpense = (id) => {
+    setExpenses(expenses.filter(e => e.id !== id));
+  };
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-6 animate-in fade-in duration-300">
+      <div>
+        <h2 className="text-lg font-black text-white">ניהול הוצאות כלים ורכש חיצוני</h2>
+        <p className="text-xs opacity-60">תיעוד של כל הכלים, דלק, וחומרי דישון שרכשת בנפרד ללא קשר לחשבון הלקוח.</p>
+      </div>
+
+      {/* Add Expense Form */}
+      <form onSubmit={handleAddExpense} className="bg-black/30 p-4 rounded-2xl border border-white/5 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div>
+          <label className="block text-xs opacity-60 mb-1">שם הכלי / החומר</label>
+          <input 
+            type="text" 
+            required
+            value={expenseName} 
+            onChange={e => setExpenseName(e.target.value)}
+            placeholder="למשל: מפוח עלים"
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs opacity-60 mb-1">עלות (₪)</label>
+          <input 
+            type="number" 
+            required
+            value={expenseCost} 
+            onChange={e => setExpenseCost(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs opacity-60 mb-1">קטגוריה</label>
+          <select 
+            value={expenseCategory} 
+            onChange={e => setExpenseCategory(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-xs focus:outline-none"
+          >
+            <option value="כלים">כלים ומכונות</option>
+            <option value="חומרים">חומרי דישון והשקייה</option>
+            <option value="שוטף">דלק ונסיעות</option>
+          </select>
+        </div>
+        <button 
+          type="submit" 
+          className="py-2.5 bg-[#70892E] hover:bg-[#5b7024] text-white rounded-xl text-xs font-bold transition-all"
+        >
+          הוסף הוצאה לרשימה
+        </button>
+      </form>
+
+      {/* Expense List Table */}
+      <div className="space-y-2">
+        <h3 className="font-bold text-xs opacity-85">הוצאות שתועדו השנה</h3>
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {expenses.map(exp => (
+            <div key={exp.id} className="bg-black/20 p-3 rounded-xl border border-white/5 flex justify-between items-center text-xs">
+              <div>
+                <p className="font-bold">{exp.name}</p>
+                <p className="text-[10px] opacity-50">{exp.date} • {exp.category}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-[#70892E]">₪{exp.cost}</span>
+                <button 
+                  onClick={() => handleDeleteExpense(exp.id)}
+                  className="text-red-400 hover:text-red-300 p-1"
+                >
+                  <Trash2 size={14}/>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
